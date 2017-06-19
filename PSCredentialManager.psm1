@@ -13,7 +13,6 @@ function Get-CachedCredential
 		[string]$TargetName
 	)
 
-	$output = @()
 	if (-not $PSBoundParameters.ContainsKey('ComputerName') -and -not ($PSBoundParameters.ContainsKey('Name')))
 	{
 		ConvertTo-CachedCredential -CmdKeyOutput (cmdkey /list)
@@ -102,7 +101,7 @@ function Invoke-PsExec
 
 function Test-PsExecInstalled
 {
-	[OutputType('bool')]
+	[OutputType([bool])]
 	[CmdletBinding()]
 	param
 	()
@@ -151,14 +150,10 @@ function New-CachedCredential
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[string]$TargetName,
-		
-		[Parameter(Mandatory)]
-		[ValidateNotNullOrEmpty()]
-		[string]$Username,
 
-		[Parameter(Mandatory)]
+		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$Password,
+		[pscredential]$Credential,
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
@@ -166,12 +161,12 @@ function New-CachedCredential
 	)
 
 	if (-not $PSBoundParameters.ContainsKey('ComputerName')) {
-		$null = cmdkey /add:$TargetName /user:$Username /pass:$Password
+		$null = cmdkey /add:$TargetName /user:$Credential.UserName /pass:($Credential.GetNetworkCredential().Password)
 	} else {
 		foreach ($c in $ComputerName) {
 			$invParams = @{
 				ComputerName = $c
-				Command = "cmdkey /add:$TargetName /user:$Username /pass:$Password"
+				Command = "cmdkey /add:$TargetName /user:$($Credential.UserName) /pass:$($Credential.GetNetworkCredential().Password)"
 			}
 			$null = Invoke-PsExec @invParams
 		}
