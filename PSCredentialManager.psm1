@@ -10,7 +10,7 @@ function Get-CachedCredential
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$Name
+		[string]$TargetName
 	)
 
 	$output = @()
@@ -18,39 +18,18 @@ function Get-CachedCredential
 	{
 		ConvertTo-CachedCredential -CmdKeyOutput (cmdkey /list)
 	} elseif (-not $PSBoundParameters.ContainsKey('ComputerName') -and $PSBoundParameters.ContainsKey('Name')) {
-		ConvertTo-CachedCredential -CmdKeyOutput (cmdkey /list:$Name)
+		ConvertTo-CachedCredential -CmdKeyOutput (cmdkey /list:$TargetName)
 	} else {
-		if (-not (Test-PsExecInstalled)) {
-			Install-PsExec
-		}
-		$cred = Get-Credential -Message 'Enter credential to authenticate to remote computer(s).' -UserName (whoami)
 		foreach ($c in $ComputerName) {
-			$cmdkeyOutput = Invoke-PsExec -ComputerName $c -Command 'cmdkey /list' -Credential $cred
-			ConvertTo-CachedCredential -CmdKeyOutput $cmdkeyOutput
+			$cmdkeyOutput = Invoke-PsExec -ComputerName $c -Command 'cmdkey /list'
+			if ($cred = ConvertTo-CachedCredential -CmdKeyOutput $cmdkeyOutput) {
+				[pscustomobject]@{
+					ComputerName = $c
+					Credentials = $cred
+				}
+			}
 		}
 	}
-}
-
-function Test-PsRemoting {
-	param (
-		[Parameter(Mandatory = $true)]
-		$computername
-	)
-	
-	try {
-		Write-Verbose "Testing for enabled remoting"
-		$result = Invoke-Command -ComputerName $computername { 1 }
-	} catch {
-		return $false
-	}
-	
-	## I’ve never seen this happen, but if you want to be
-	## thorough….
-	if ($result -ne 1) {
-		Write-Verbose "Remoting to $computerName returned an unexpected result."
-		return $false
-	}
-	$true
 }
 
 function Install-PsExec
@@ -87,29 +66,38 @@ function Invoke-PsExec
 		[ValidateNotNullOrEmpty()]
 		[string]$Command,
 
-		[Parameter(Mandatory)]
+		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[pscredential]$Credential
+		[pscredential]$Credential = (Get-Credential -Message 'Enter credential to authenticate to remote computer(s).' -UserName (whoami))
 	)
-	$x = $Command -split ' '
-	$cmd = $x[0]
-	$cmdArgs = $x[1..($x.Length)]
 
-	@("$env:TEMP\err.txt","$env:TEMP\out.txt").foreach({
-		Remove-Item -Path $_ -ErrorAction Ignore
-	})
-	
-	$startParams = @{
-		FilePath = "$env:temp\pstools\psexec.exe"
-		Wait = $true
-		NoNewWindow = $true
-		ArgumentList = "\\$ComputerName -user $($Credential.UserName) -pass $($Credential.GetNetworkCredential().Password) $cmd $cmdArgs"
-		RedirectStandardError = "$env:TEMP\err.txt"
-		RedirectStandardOutput = "$env:TEMP\out.txt"
+	try {
+
+		if (-not (Test-PsExecInstalled)) {
+			Install-PsExec
+		}
+
+		$x = $Command -split ' '
+		$cmd = $x[0]
+		$cmdArgs = $x[1..($x.Length)]
+
+		$startParams = @{
+			FilePath = "$env:temp\pstools\psexec.exe"
+			Wait = $true
+			NoNewWindow = $true
+			ArgumentList = "\\$ComputerName -user $($Credential.UserName) -pass $($Credential.GetNetworkCredential().Password) $cmd $cmdArgs"
+			RedirectStandardError = "$env:TEMP\err.txt"
+			RedirectStandardOutput = "$env:TEMP\out.txt"
+		}
+		Start-Process @startParams
+		Get-Content -Path "$env:TEMP\out.txt" -Raw
+	} catch {
+		$PSCmdlet.ThrowTerminatingError($_)
+	} finally {
+		@("$env:TEMP\err.txt","$env:TEMP\out.txt").foreach({
+			Remove-Item -Path $_ -ErrorAction Ignore
+		})
 	}
-	Start-Process @startParams
-	Get-Content -Path "$env:TEMP\out.txt" -Raw
-	 
 }
 
 function Test-PsExecInstalled
@@ -131,12 +119,26 @@ function Remove-CachedCredential
 	[CmdletBinding()]
 	param
 	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$TargetName,
+
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$ComputerName
+		[string[]]$ComputerName
 	)
 
-	cmdkey /delete:targetname
+	if (-not $PSBoundParameters.ContainsKey('ComputerName')) {
+		$null = cmdkey /delete:$TargetName
+	} else {
+		foreach ($c in $ComputerName) {
+			$invParams = @{
+				ComputerName = $c
+				Command = "cmdkey /delete:$TargetName"
+			}
+			$null = Invoke-PsExec @invParams
+		}
+	}
 	
 }
 
@@ -148,6 +150,10 @@ function New-CachedCredential
 	(
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
+		[string]$TargetName,
+		
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
 		[string]$Username,
 
 		[Parameter(Mandatory)]
@@ -156,13 +162,21 @@ function New-CachedCredential
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$ComputerName
+		[string[]]$ComputerName
 	)
+
+	if (-not $PSBoundParameters.ContainsKey('ComputerName')) {
+		$null = cmdkey /add:$TargetName /user:$Username /pass:$Password
+	} else {
+		foreach ($c in $ComputerName) {
+			$invParams = @{
+				ComputerName = $c
+				Command = "cmdkey /add:$TargetName /user:$Username /pass:$Password"
+			}
+			$null = Invoke-PsExec @invParams
+		}
+	}
 	
-	cmdkey /add:targetname /user:username /pass:password
-cmdkey /add:targetname /user:username /pass
-cmdkey /add:targetname /user:username
-cmdkey /add:targetname /smartcard
 }
 
 function ConvertTo-MatchValue
