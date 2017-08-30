@@ -7,12 +7,12 @@ try {
 
 	## Update the module version based on the build version and limit exported functions
 	$replacements = @{
-		"ModuleVersion = '.*'" = "ModuleVersion = '$env:APPVEYOR_BUILD_VERSION'"
-		"FunctionsToExport = '\*'" = "FunctionsToExport = 'Get-CachedCredential','Remove-CachedCredential','New-CachedCredential'"
+		"ModuleVersion = '.*'"     = "ModuleVersion = '$env:APPVEYOR_BUILD_VERSION'"
+		"FunctionsToExport = '\*'" = "FunctionsToExport = 'Get-CachedCredential','Removed-CachedCredential','New-CachedCredential'"
 	}		
 
 	$replacements.GetEnumerator() | foreach {
-		$manifestContent = $manifestContent -replace $_.Key,$_.Value
+		$manifestContent = $manifestContent -replace $_.Key, $_.Value
 	}
 
 	$manifestContent | Set-Content -Path $manifestFilePath

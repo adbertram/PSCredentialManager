@@ -8,10 +8,10 @@ try {
 	$testResultsFilePath = "$ProjectRoot\TestResults.xml"
 
 	$invPesterParams = @{
-		Path = "$ProjectRoot\PSCredentialManager.Tests.ps1"
+		Path         = "$ProjectRoot\PSCredentialManager.Tests.ps1"
 		OutputFormat = 'NUnitXml'
-		OutputFile = $testResultsFilePath
-		EnableExit = $true
+		OutputFile   = $testResultsFilePath
+		EnableExit   = $true
 	}
 	Invoke-Pester @invPesterParams
 

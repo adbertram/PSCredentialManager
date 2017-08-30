@@ -19,11 +19,11 @@ try {
 
 	## Publish module to PowerShell Gallery
 	$publishParams = @{
-		Path = $env:APPVEYOR_BUILD_FOLDER
+		Path        = $env:APPVEYOR_BUILD_FOLDER
 		NuGetApiKey = $env:nuget_apikey
-		Repository = 'PSGallery'
-		Force = $true
-		Confirm = $false
+		Repository  = 'PSGallery'
+		Force       = $true
+		Confirm     = $false
 	}
 	Publish-Module @publishParams
 
