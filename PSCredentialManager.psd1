@@ -1,13 +1,13 @@
 @{
     RootModule = 'PSCredentialManager.psm1'
-    ModuleVersion = '1.0'
+    ModuleVersion = '1.0.10'
     GUID = '1edda3dd-4527-46c4-9d86-f6bda0dc1390'
     Author = 'Adam Bertram'
     CompanyName = 'Adam the Automator, LLC'
     Copyright = '(c) 2017 Adam Bertram. All rights reserved.'
     Description = 'This module allows management and automation of Windows cached credentials.'
     PowerShellVersion = '5.0'
-    FunctionsToExport = '*'
+    FunctionsToExport = 'Get-CachedCredential','Remove-CachedCredential','New-CachedCredential'
     CmdletsToExport = '*'
     VariablesToExport = '*'
     AliasesToExport = '*'
@@ -33,3 +33,4 @@
 
     } 
 }
+
