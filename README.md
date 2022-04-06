@@ -26,4 +26,4 @@ PSCredentialManager is a PowerShell module that allows the user to manage cached
 
 ## Removing credentials
 
-`PS> Remove-CachedCreential`
+`PS> Remove-CachedCredential`
